@@ -123,6 +123,9 @@ module Data.Map.Lazy (
     , mapKeys
     , mapKeysWith
     , mapKeysMonotonic
+    , traverseKeys
+    , traverseKeysWith
+    , traverseKeysMonotonic
 
     -- * Folds
     , M.foldr

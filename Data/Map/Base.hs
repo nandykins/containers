@@ -163,6 +163,9 @@ module Data.Map.Base (
     , mapKeys
     , mapKeysWith
     , mapKeysMonotonic
+    , traverseKeys
+    , traverseKeysWith
+    , traverseKeysMonotonic
 
     -- * Folds
     , foldr
@@ -1761,6 +1764,44 @@ mapKeysMonotonic :: (k1->k2) -> Map k1 a -> Map k2 a
 mapKeysMonotonic _ Tip = Tip
 mapKeysMonotonic f (Bin sz k x l r) =
     Bin sz (f k) x (mapKeysMonotonic f l) (mapKeysMonotonic f r)
+
+-- | /O(n*log n)/.
+-- @'traverseKeys' f s@ is the map obtained by traversing over each key of @s@
+-- using @f@.
+--
+-- @
+-- 'traverseKeys' ('return' . f) s == 'mapKeys' f s
+-- 'traverseKeys' f s == 'traverseKeysWith' 'const' f s
+-- @
+
+traverseKeys :: (Applicative f, Ord k2)
+             => (k1 -> f k2) -> Map k1 a -> f (Map k2 a)
+traverseKeys f = fmap fromList . traverse f' . toList
+  where f' (k,x) = (\k' -> (k',x)) <$> f k
+
+-- | /O(n*log n)/.
+-- @'traverseKeysWith' c f s@ is the map obtained by traversing over each key
+-- of @s@ using @f@. If @f@ maps two or more distinct keys to the same new key,
+-- the results will be combined using @c@.
+
+traverseKeysWith :: (Applicative f, Ord k2)
+                 => (a -> a -> a) -> (k1 -> f k2) -> Map k1 a -> f (Map k2 a)
+traverseKeysWith c f = fmap (fromListWith c) . traverse f' . toList
+  where f' (k,x) = (\k' -> (k',x)) <$> f k
+
+-- | /O(n)/.
+-- @'traverseKeysMonotonic' f s == 'traverseKeys' f s@, but works only when
+-- @f@ is strictly monotonic.
+-- /The precondition is not checked./
+
+traverseKeysMonotonic :: (Applicative f, Ord k2)
+                      => (k1 -> f k2) -> Map k1 a -> f (Map k2 a)
+traverseKeysMonotonic f = go
+  where
+    go Tip = pure Tip
+    go (Bin 1 k x _ _) = (\k' -> Bin 1 k' x Tip Tip) <$> f k
+    go (Bin s k x l r) = (\l' k' -> Bin s k' x l') <$> go l <*> f k <*> go r
+{-# INLINE traverseKeysMonotonic #-}
 
 {--------------------------------------------------------------------
   Folds

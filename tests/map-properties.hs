@@ -75,6 +75,9 @@ main = defaultMain
          , testCase "mapKeys" test_mapKeys
          , testCase "mapKeysWith" test_mapKeysWith
          , testCase "mapKeysMonotonic" test_mapKeysMonotonic
+         , testCase "traverseKeys" test_traverseKeys
+         , testCase "traverseKeysWith" test_traverseKeysWith
+         , testCase "traverseKeysMonotonic" test_traverseKeysMonotonic
          , testCase "elems" test_elems
          , testCase "keys" test_keys
          , testCase "assocs" test_assocs
@@ -510,6 +513,33 @@ test_mapKeysMonotonic = do
     mapKeysMonotonic (\ k -> k * 2) (fromList [(5,"a"), (3,"b")]) @?= fromList [(6, "b"), (10, "a")]
     valid (mapKeysMonotonic (\ k -> k * 2) (fromList [(5,"a"), (3,"b")])) @?= True
     valid (mapKeysMonotonic (\ _ -> 1)     (fromList [(5,"a"), (3,"b")])) @?= False
+
+test_traverseKeys :: Assertion
+test_traverseKeys = do
+    m1 <- traverseKeys (\ k -> return (k+1)) $ fromList [(5,"a"), (3,"b")]
+    m2 <- traverseKeys (\ _ -> return 1)     $ fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]
+    m3 <- traverseKeys (\ _ -> return 3)     $ fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]
+    m1 @?= fromList [(4, "b"), (6, "a")]
+    m2 @?= singleton 1 "c"
+    m3 @?= singleton 3 "c"
+
+test_traverseKeysWith :: Assertion
+test_traverseKeysWith = do
+    m1 <- traverseKeysWith (++) (\ _ -> return 1) $ fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]
+    m2 <- traverseKeysWith (++) (\ _ -> return 3) $ fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]
+    m1 @?= singleton 1 "cdab"
+    m2 @?= singleton 3 "cdab"
+
+test_traverseKeysMonotonic :: Assertion
+test_traverseKeysMonotonic = do
+    m1 <- traverseKeysMonotonic (\ k -> return (k + 1)) $ fromList [(5,"a"), (3,"b")]
+    m2 <- traverseKeysMonotonic (\ k -> return (k * 2)) $ fromList [(5,"a"), (3,"b")]
+    m3 <- traverseKeysMonotonic (\ k -> return (k * 2)) $ fromList [(5,"a"), (3,"b")]
+    m4 <- traverseKeysMonotonic (\ _ -> return 1)       $ fromList [(5,"a"), (3,"b")]
+    m1 @?= fromList [(4, "b"), (6, "a")]
+    m2 @?= fromList [(6, "b"), (10, "a")]
+    valid m3 @?= True
+    valid m4 @?= False
 
 ----------------------------------------------------------------
 -- Conversion

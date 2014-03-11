@@ -130,6 +130,9 @@ module Data.Map.Strict
     , mapKeys
     , mapKeysWith
     , mapKeysMonotonic
+    , traverseKeys
+    , traverseKeysWith
+    , traverseKeysMonotonic
 
     -- * Folds
     , foldr
@@ -250,6 +253,7 @@ import Data.Map.Base hiding
     , mapAccumWithKey
     , mapAccumRWithKey
     , mapKeysWith
+    , traverseKeysWith
     , fromSet
     , fromList
     , fromListWith
@@ -268,9 +272,11 @@ import Data.Map.Base hiding
     , updateMinWithKey
     , updateMaxWithKey
     )
+import Control.Applicative (Applicative(..), (<$>))
 import qualified Data.Set.Base as Set
 import Data.StrictPair
 import Data.Bits (shiftL, shiftR)
+import Data.Traversable (Traversable(traverse))
 
 -- Use macros to define strictness of functions.  STRICT_x_OF_y
 -- denotes an y-ary function strict in the x-th parameter. Similarly
@@ -990,6 +996,16 @@ mapKeysWith c f = fromListWith c . foldrWithKey (\k x xs -> (f k, x) : xs) []
 #if __GLASGOW_HASKELL__ >= 700
 {-# INLINABLE mapKeysWith #-}
 #endif
+
+-- | /O(n*log n)/.
+-- @'traverseKeysWith' c f s@ is the map obtained by traversing over each key
+-- of @s@ using @f@. If @f@ maps two or more distinct keys to the same new key,
+-- the results will be combined using @c@.
+
+traverseKeysWith :: (Applicative f, Ord k2)
+                 => (a -> a -> a) -> (k1 -> f k2) -> Map k1 a -> f (Map k2 a)
+traverseKeysWith c f = fmap (fromListWith c) . traverse f' . toList
+  where f' (k,x) = (\k' -> (k',x)) <$> f k
 
 {--------------------------------------------------------------------
   Conversions
